@@ -1,1 +1,91 @@
+import requests
+from bs4 import BeautifulSoup
+import csv
+import time
+
+# Base URL adjusted to include '/ency'
+base_url = 'https://medlineplus.gov/ency/'
+
+# Function to get illnesses for a specific letter
+def get_illnesses_for_letter(letter_url):
+    html_text = requests.get(letter_url).text
+    soup = BeautifulSoup(html_text, 'lxml')
+    
+    # Find all the illness names under <ul id='index'>
+    illnesses_ul = soup.find('ul', id='index')
+    illnesses = []
+    if illnesses_ul:
+        all_li = illnesses_ul.find_all('li')
+        for li in all_li:
+            a_tag = li.find('a')
+            if a_tag:
+                illness_name = a_tag.get_text(strip=True)
+                illness_link = base_url + a_tag['href'].lstrip('/ency/')  # Adjust link format
+                illnesses.append((illness_name, illness_link))
+    
+    return illnesses
+
+# Function to get the symptoms section for a given illness
+def get_symptoms_section(illness_url):
+    time.sleep(1)  # Wait 1 second between requests to avoid overloading the server
+    try:
+        html_text = requests.get(illness_url, timeout=10).text
+        soup = BeautifulSoup(html_text, 'lxml')
+
+        # Find the section for symptoms
+        symptoms_section = soup.find('div', class_='section-body', id='section-2')
+        if symptoms_section:
+            return symptoms_section.get_text(strip=True)
+        else:
+            return "No symptoms section found."
+    except requests.exceptions.RequestException as e:
+        return f"Error fetching URL {illness_url}: {e}"
+
+# Prepare CSV file to store the data
+with open('trial2.csv', mode='w', newline='', encoding='utf-8') as file:
+    writer = csv.writer(file)
+    
+    # Write header
+    writer.writerow(['Illness', 'Link', 'Symptoms'])
+    
+    # Define URLs for each letter (A-Z)
+    letter_urls = {
+        'A': 'https://medlineplus.gov/ency/encyclopedia_A.htm',
+        'B': 'https://medlineplus.gov/ency/encyclopedia_B.htm',
+        'C': 'https://medlineplus.gov/ency/encyclopedia_C.htm',
+        'D': 'https://medlineplus.gov/ency/encyclopedia_D.htm',
+        'E': 'https://medlineplus.gov/ency/encyclopedia_E.htm',
+        'F': 'https://medlineplus.gov/ency/encyclopedia_F.htm',
+        'G': 'https://medlineplus.gov/ency/encyclopedia_G.htm',
+        'H': 'https://medlineplus.gov/ency/encyclopedia_H.htm',
+        'I': 'https://medlineplus.gov/ency/encyclopedia_I.htm',
+        'J': 'https://medlineplus.gov/ency/encyclopedia_J.htm',
+        'K': 'https://medlineplus.gov/ency/encyclopedia_K.htm',
+        'L': 'https://medlineplus.gov/ency/encyclopedia_L.htm',
+        'M': 'https://medlineplus.gov/ency/encyclopedia_M.htm',
+        'N': 'https://medlineplus.gov/ency/encyclopedia_N.htm',
+        'O': 'https://medlineplus.gov/ency/encyclopedia_O.htm',
+        'P': 'https://medlineplus.gov/ency/encyclopedia_P.htm',
+        'Q': 'https://medlineplus.gov/ency/encyclopedia_Q.htm',
+        'R': 'https://medlineplus.gov/ency/encyclopedia_R.htm',
+        'S': 'https://medlineplus.gov/ency/encyclopedia_S.htm',
+        'T': 'https://medlineplus.gov/ency/encyclopedia_T.htm',
+        'U': 'https://medlineplus.gov/ency/encyclopedia_U.htm',
+        'V': 'https://medlineplus.gov/ency/encyclopedia_V.htm',
+        'W': 'https://medlineplus.gov/ency/encyclopedia_W.htm',
+        'XYZ': 'https://medlineplus.gov/ency/encyclopedia_XYZ.htm',
+    }
+    
+    # Loop through each letter URL and extract illnesses and symptoms
+    for letter, letter_url in letter_urls.items():
+        print(f"Fetching illnesses for URL: {letter_url}")
+        illnesses = get_illnesses_for_letter(letter_url)
+        
+        # For each illness, fetch its symptoms and save to the CSV
+        for illness_name, illness_link in illnesses:
+            print(f"Fetching data for illness: {illness_name}")
+            symptoms = get_symptoms_section(illness_link)
+            writer.writerow([illness_name, illness_link, symptoms])
+
+print("Data has been saved to trial2.csv successfully.")
 
