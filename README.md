@@ -4,17 +4,16 @@ An AI-based symptom checker that provides preliminary health insights based on u
 It uses a custom dataset derived from MedlinePlus and a Retrieval-Augmented Generation (RAG) pipeline  
 built with LangChain, FAISS, HuggingFace embeddings, and Groq for fast, low-latency inference.
 
----
 
 ## 🔧 Technologies Used
 - Python
+- HuggingFace (SBERT)
+- MedlinePlus (scraped dataset)
 - LangChain
 - FAISS
-- HuggingFace (SBERT)
 - Groq (ChatGroq, LLaMA3)
-- MedlinePlus (scraped dataset)
 
-## 🗂 Project Structure
+## Project Structure
 symptom-checker/
 ├── data/ # Cleaned and structured medical dataset
 ├── notebooks/ # Jupyter notebooks for analysis and prototyping
@@ -27,5 +26,5 @@ symptom-checker/
 ├── LICENSE # MIT License
 └── requirements.txt # Python dependencies
 
-## 📌 Status
-Work in progress — core pipeline under development and multilingual adaptation ongoing.
+## Status
+Work in progress, core pipeline under development and multilingual adaptation ongoing.
