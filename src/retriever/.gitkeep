@@ -1,1 +1,53 @@
+#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
 
+import os
+import getpass
+import pandas as pd
+from sentence_transformers import SentenceTransformer
+from langchain_community.vectorstores import FAISS
+from langchain_community.document_loaders import CSVLoader
+from langchain.chains import RetrievalQA
+from langchain_groq import ChatGroq
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain.document_loaders import PyPDFLoader
+from langchain.document_loaders.merge import MergedDataLoader
+
+### 1️⃣ Caricamento API Key di Groq ###
+if not os.environ.get("GROQ_API_KEY"):
+    os.environ["GROQ_API_KEY"] = getpass.getpass("Enter API key for Groq: ")
+
+### 2️⃣ Carichiamo il CSV ###
+csv_path = "/Users/unkwnown/Desktop/LoopAi/dataset.csv"
+csv_loader = CSVLoader(file_path=csv_path)
+pdf_paths = ["/Users/unknown/Downloads/Pathologic Basis of Disease .pdf"]
+pdf_loaders = [PyPDFLoader(path) for path in pdf_paths]
+merged_loader = MergedDataLoader(loaders=[csv_loader] + pdf_loaders)
+docs = merged_loader.load()
+### 3️⃣ Creiamo gli embeddings con SBERT ###
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+### 4️⃣ Creiamo il vectorstore FAISS ###
+vectorstore = FAISS.from_documents(docs, embeddings)
+retriever = vectorstore.as_retriever()
+
+### 5️⃣ Impostiamo il modello LLM di Groq ###
+llm = ChatGroq(model_name="llama3-8b-8192", temperature=0.5)
+
+### 6️⃣ Creiamo la catena di interrogazione con RetrievalQA ###
+qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever, chain_type="stuff")
+
+### 7️⃣ Facciamo una query ###
+query = "Quali informazioni ci sono nel file?"
+response = qa_chain.invoke(query)
+
+### 8️⃣ Stampiamo la risposta ###
+print(response)
+
+
+while True:
+    query = input("\nScrivi la tua domanda (oppure 'exit' per uscire): ")
+    if query.lower() == "exit":
+        print("Chiusura del sistema RAG. Alla prossima! 👋")
+        break
+    response = qa_chain.invoke(query)
+    print("\n📝 Risposta:", response)
