@@ -26,3 +26,6 @@ symptom-checker/
 ├── README.md # Project overview
 ├── LICENSE # MIT License
 └── requirements.txt # Python dependencies
+
+## 📌 Status
+Work in progress — core pipeline under development and multilingual adaptation ongoing.
