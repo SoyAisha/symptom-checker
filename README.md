@@ -15,3 +15,14 @@ built with LangChain, FAISS, HuggingFace embeddings, and Groq for fast, low-late
 - MedlinePlus (scraped dataset)
 
 ## 🗂 Project Structure
+symptom-checker/
+├── data/ # Cleaned and structured medical dataset
+├── notebooks/ # Jupyter notebooks for analysis and prototyping
+├── src/ # Main source code (retriever, parser, utilities)
+│ ├── retriever/ # FAISS, LangChain, Groq-based query pipeline
+│ ├── parser/ # Data cleaning and structuring scripts
+│ └── utils/ # Utility scripts and configurations
+├── outputs/ # Sample responses or logs
+├── README.md # Project overview
+├── LICENSE # MIT License
+└── requirements.txt # Python dependencies
