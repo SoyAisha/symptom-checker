@@ -1,1 +1,8 @@
 
+_____________________________
+csv_path = "/Users/unkwnown/Desktop/LoopAi/dataset.csv"
+csv_loader = CSVLoader(file_path=csv_path)
+pdf_paths = ["/Users/unknown/Downloads/Pathologic Basis of Disease .pdf"]
+pdf_loaders = [PyPDFLoader(path) for path in pdf_paths]
+merged_loader = MergedDataLoader(loaders=[csv_loader] + pdf_loaders)
+docs = merged_loader.load()
