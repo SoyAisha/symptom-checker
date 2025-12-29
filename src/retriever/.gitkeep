@@ -1,5 +1,5 @@
-#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
-
+#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
+import time
 import os
 import getpass
 import pandas as pd
@@ -11,43 +11,118 @@ from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.document_loaders import PyPDFLoader
 from langchain.document_loaders.merge import MergedDataLoader
+from langchain.prompts import PromptTemplate   # 👈 nuovo import
 
 ### 1️⃣ Caricamento API Key di Groq ###
 if not os.environ.get("GROQ_API_KEY"):
     os.environ["GROQ_API_KEY"] = getpass.getpass("Enter API key for Groq: ")
 
 ### 2️⃣ Carichiamo il CSV ###
-csv_path = "/Users/unkwnown/Desktop/LoopAi/dataset.csv"
+csv_path = "/Users/aishaalbabrown/Desktop/LoopAi/Symptom checker material/MIO  SECONDO FIGLIO.csv"
 csv_loader = CSVLoader(file_path=csv_path)
-pdf_paths = ["/Users/unknown/Downloads/Pathologic Basis of Disease .pdf"]
+
+### 3️⃣ Carichiamo il PDF ###
+pdf_paths = ['/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/KIDNEY CANCER.pdf',
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/ACUTE LYMPHOBLASTIC LEUKEMIA.docx.pdf', 
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/BRAIN CANCER 1.1.pdf',
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/BRAIN CANCER 1.2.pdf',
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/BRAIN CANCER 1.3.pdf',
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/BRAIN CANCER 1.4.pdf',
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/BRAIN CANCER.docx.pdf',
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/CHEST X_RAY_FOR_PNEUMONIA.docx.pdf',
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/EYE DISEASES CLASSIFICATION.docx.pdf',
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/LUNG AND COLON CANCER.docx.pdf',
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/SKIN CANCER 1.1.pdf',
+            '/Users/aishaalbabrown/Desktop/Lavoro loopai/Medical documentation/SKIN CANCER DETECTION.docx.pdf']
 pdf_loaders = [PyPDFLoader(path) for path in pdf_paths]
+
+### 4️⃣ Uniamo CSV + PDF ###
 merged_loader = MergedDataLoader(loaders=[csv_loader] + pdf_loaders)
 docs = merged_loader.load()
-### 3️⃣ Creiamo gli embeddings con SBERT ###
+
+### 5️⃣ Creiamo gli embeddings con SBERT ###
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-### 4️⃣ Creiamo il vectorstore FAISS ###
+### 6️⃣ Creiamo il vectorstore FAISS ###
 vectorstore = FAISS.from_documents(docs, embeddings)
 retriever = vectorstore.as_retriever()
 
-### 5️⃣ Impostiamo il modello LLM di Groq ###
-llm = ChatGroq(model_name="llama3-8b-8192", temperature=0.5)
+### 7️⃣ Impostiamo il modello LLM di Groq ###
+llm = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.5)
 
-### 6️⃣ Creiamo la catena di interrogazione con RetrievalQA ###
-qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever, chain_type="stuff")
+### 8️⃣ Prompt medico SAFE per il symptom checker ###
+SYSTEM_PROMPT = """
+You are a medical information assistant, NOT a doctor.
 
-### 7️⃣ Facciamo una query ###
-query = "Quali informazioni ci sono nel file?"
-response = qa_chain.invoke(query)
+You must follow these rules:
+- Use ONLY the information contained in the context below.
+- If the context is not enough to answer safely, say you don't know
+  and recommend talking to a doctor.
+- Never give a definitive diagnosis.
+- Never invent diseases, drugs, lab values, or numbers that are not in the context.
+- Always be cautious with serious symptoms (chest pain, difficulty breathing,
+  neurological symptoms, severe pain, blood in urine, etc.): in these cases
+  suggest urgent medical evaluation.
+- Answer in clear, simple English, in 1–3 short paragraphs.
 
-### 8️⃣ Stampiamo la risposta ###
-print(response)
+Context:
+{context}
 
+Question:
+{question}
 
+Your answer (in English). At the end, add this sentence:
+"This is not a medical diagnosis. Please consult a healthcare professional, and seek urgent care if symptoms are severe or worsening."
+"""
+
+prompt = PromptTemplate(
+    input_variables=["context", "question"],
+    template=SYSTEM_PROMPT,
+)
+
+### 9️⃣ Creiamo la catena di interrogazione con RetrievalQA ###
+qa_chain = RetrievalQA.from_chain_type(
+    llm,
+    retriever=retriever,
+    chain_type="stuff",
+    return_source_documents=True,          # 👈 per avere i documenti usati
+    chain_type_kwargs={"prompt": prompt},  # 👈 usiamo il prompt sicuro
+)
+
+### 🔟 Facciamo una query di prova ###
+query = "What information is present in the file?"
+start = time.time()
+response = qa_chain.invoke({"query": query})
+latency = time.time() - start
+
+answer = response.get("result", response)
+source_docs = response.get("source_documents", [])
+n_docs = len(source_docs)
+
+print("\n🔍 Initial test query:")
+print("Q:", query)
+print("\n📝 Answer:", answer)
+print(f"⏱ Latency: {latency:.2f} s | 📚 Source docs: {n_docs}")
+
+# (opzionale) vedere da dove ha preso le informazioni
+# for i, doc in enumerate(source_docs):
+#     print(f"\n--- Source doc {i+1} ---")
+#     print(doc.page_content[:400])
+
+### 1️⃣1️⃣ Loop interattivo ###
 while True:
-    query = input("\nScrivi la tua domanda (oppure 'exit' per uscire): ")
+    query = input("\nWrite your question (or 'exit' per uscire): ")
     if query.lower() == "exit":
-        print("Chiusura del sistema RAG. Alla prossima! 👋")
+        print("Closing of RAG system. Farewell!")
         break
-    response = qa_chain.invoke(query)
-    print("\n📝 Risposta:", response)
+    
+    start = time.time()
+    response = qa_chain.invoke({"query": query})
+    latency = time.time() - start
+
+    answer = response.get("result", response)
+    source_docs = response.get("source_documents", [])
+    n_docs = len(source_docs)
+
+    print("\n📝 Answer:", answer)
+    print(f"⏱ Latency: {latency:.2f} s | 📚 Source docs: {n_docs}")
